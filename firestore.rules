@@ -1,0 +1,224 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        request.auth.token.firebase.sign_in_provider == 'google.com'
+      );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "tyresecashy@gmail.com" ||
+        (exists(/databases/$(database)/documents/members/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == "admin")
+      );
+    }
+
+    function isMemberInnerCircle() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/members/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/members/$(request.auth.uid)).data.isInnerCircle == true;
+    }
+
+    // 3. Entity Validation Helpers (The Anti-Update-Gap)
+    function isValidArtist(data) {
+      return data.keys().hasAll(['id', 'name', 'role', 'bio', 'avatarUrl']) &&
+             data.keys().size() >= 5 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 120 &&
+             data.role is string && data.role.size() <= 100 &&
+             data.bio is string && data.bio.size() <= 10000 &&
+             data.avatarUrl is string && data.avatarUrl.size() <= 1000;
+    }
+
+    function isValidRelease(data) {
+      return data.keys().hasAll(['id', 'title', 'type', 'releaseDate', 'coverUrl', 'artistIds', 'isPremium', 'status']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.coverUrl is string && data.coverUrl.size() <= 1000 &&
+             data.isPremium is bool &&
+             data.status in ['draft', 'scheduled', 'released'] &&
+             data.type in ['LP', 'EP', 'Single', 'Mixtape'];
+    }
+
+    function isValidMythology(data) {
+      return data.keys().hasAll(['id', 'chapterNumber', 'title', 'narrativeHtml']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.chapterNumber is number &&
+             data.title is string && data.title.size() <= 200 &&
+             data.narrativeHtml is string && data.narrativeHtml.size() <= 50000;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['id', 'targetId', 'userId', 'userName', 'content', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.targetId is string && data.targetId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.userName is string && data.userName.size() <= 100 &&
+             data.content is string && data.content.size() <= 1000;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['id', 'email', 'displayName', 'role']) &&
+             data.id == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.role in ['fan', 'artist', 'admin'];
+    }
+
+    function isValidVaultAsset(data) {
+      return data.keys().hasAll(['id', 'title', 'type', 'fileUrl', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.fileUrl is string && data.fileUrl.size() <= 1000 &&
+             data.type in ['master', 'stems', 'artwork', 'press-kit', 'other'];
+    }
+
+    function isValidBroadcast(data) {
+      return data.keys().hasAll(['id', 'title', 'channel', 'content', 'status']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.channel is string &&
+             data.content is string && data.content.size() <= 10000 &&
+             data.status in ['draft', 'sent'];
+    }
+
+    function isValidAnalytic(data) {
+      return data.keys().hasAll(['id', 'eventType', 'timestamp']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.eventType is string && data.eventType.size() <= 100;
+    }
+
+    function isValidTheme(data) {
+      return data.keys().hasAll(['id', 'name', 'colors', 'isActive']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.colors is map &&
+             data.isActive is bool;
+    }
+
+    // 4. Collection Matches
+
+    // ==========================================
+    // ARTISTS
+    // ==========================================
+    match /artists/{artistId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(artistId) && isValidArtist(incoming());
+      allow update: if (isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == "artist")) 
+                    && isValidArtist(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // RELEASES
+    // ==========================================
+    match /releases/{releaseId} {
+      allow read: if resource.data.status == "released" || isAdmin();
+      allow create: if isAdmin() && isValidId(releaseId) && isValidRelease(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidRelease(incoming()) && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // MYTHOLOGY CHAPTERS
+    // ==========================================
+    match /mythologies/{chapterId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(chapterId) && isValidMythology(incoming());
+      allow update: if isAdmin() && isValidMythology(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // COMMENTS
+    // ==========================================
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isVerified() && isValidId(commentId) && isValidComment(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes']) && incoming().likes is number) ||
+        (existing().userId == request.auth.uid && isValidComment(incoming()))
+      );
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+    }
+
+    // ==========================================
+    // MEMBERS (Fan, Artist & Admin profiles)
+    // ==========================================
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(memberId) && isValidMember(incoming()) && incoming().joinedAt == request.time;
+      // Normal users CANNOT modify check status, role, isInnerCircle, etc.
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (isOwner(memberId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'avatarUrl']) && isValidMember(incoming()))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // VAULT (Digital Asset Vault)
+    // ==========================================
+    match /vault/{assetId} {
+      allow read: if isAdmin() || isMemberInnerCircle();
+      allow create: if isAdmin() && isValidId(assetId) && isValidVaultAsset(incoming());
+      allow update: if isAdmin() && isValidVaultAsset(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // BROADCAST CAMPAIGNS
+    // ==========================================
+    match /broadcasts/{broadcastId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ==========================================
+    // ANALYTICS (Listening depth, clicks)
+    // ==========================================
+    match /analytics/{analyticsId} {
+      allow read: if isAdmin();
+      // Allow any user to log click, scroll, streaming analytic events
+      allow create: if isValidId(analyticsId) && isValidAnalytic(incoming());
+      allow update, delete: if false;
+    }
+
+    // ==========================================
+    // THEME STUDIO
+    // ==========================================
+    match /themes/{themeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

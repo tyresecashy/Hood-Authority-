@@ -1,0 +1,188 @@
+{
+  "entities": {
+    "artist": {
+      "title": "Artist",
+      "description": "Artist biography, statistics, and media assets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the artist" },
+        "name": { "type": "string", "description": "Stage name of the artist" },
+        "role": { "type": "string", "description": "Role in the collective (e.g. Lead, Producer)" },
+        "bio": { "type": "string", "description": "Cinematic biography" },
+        "avatarUrl": { "type": "string", "description": "Profile picture URL" },
+        "stats": { "type": "object", "description": "Monthly listeners, followers, myth rating" },
+        "socials": { "type": "object", "description": "Social media links" },
+        "gallery": { "type": "array", "description": "List of media file URLs" }
+      },
+      "required": ["id", "name", "role", "bio", "avatarUrl"]
+    },
+    "release": {
+      "title": "Release",
+      "description": "Album or single release with metadata and audio tracks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["LP", "EP", "Single", "Mixtape"] },
+        "releaseDate": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "tracks": { "type": "array" },
+        "artistIds": { "type": "array" },
+        "isPremium": { "type": "boolean" },
+        "isScheduled": { "type": "boolean" },
+        "scheduledAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "released"] }
+      },
+      "required": ["id", "title", "type", "releaseDate", "coverUrl", "artistIds", "isPremium", "status"]
+    },
+    "mythology": {
+      "title": "Mythology",
+      "description": "Scroll-based narrative chapters detailing the East African hip-hop mythology",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chapterNumber": { "type": "number" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "narrativeHtml": { "type": "string" },
+        "bgVideoUrl": { "type": "string" },
+        "ambientAudioUrl": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "chapterNumber", "title", "narrativeHtml"]
+    },
+    "comment": {
+      "title": "Comment",
+      "description": "Community discussion, user comments, reviews and fan engagement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "targetId": { "type": "string", "description": "Release or mythology id being discussed" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "isInnerCircle": { "type": "boolean" },
+        "likes": { "type": "number" }
+      },
+      "required": ["id", "targetId", "userId", "userName", "content", "createdAt"]
+    },
+    "member": {
+      "title": "Member",
+      "description": "Inner Circle premium community member profile, including achievements and levels",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Corresponds to the Firebase Auth UID" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "role": { "type": "string", "enum": ["fan", "artist", "admin"] },
+        "isInnerCircle": { "type": "boolean" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "badges": { "type": "array" },
+        "joinedAt": { "type": "string" }
+      },
+      "required": ["id", "email", "displayName", "role"]
+    },
+    "vaultAsset": {
+      "title": "VaultAsset",
+      "description": "Secret masters, stems, live recordings, photos, or confidential release assets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["master", "stems", "artwork", "press-kit", "other"] },
+        "fileUrl": { "type": "string" },
+        "fileSize": { "type": "string" },
+        "artistId": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "fileUrl", "createdAt"]
+    },
+    "broadcast": {
+      "title": "Broadcast",
+      "description": "Outbound campaign alerts sent via Email, Discord, Telegram, or push",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "channel": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "sent"] },
+        "sentAt": { "type": "string" },
+        "recipientsCount": { "type": "number" }
+      },
+      "required": ["id", "title", "channel", "content", "status"]
+    },
+    "analyticEvent": {
+      "title": "AnalyticEvent",
+      "description": "Anonymous stream tracking, clicks, user interactions and heatmaps",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "eventType", "timestamp"]
+    },
+    "themePreset": {
+      "title": "ThemePreset",
+      "description": "Theme Studio color presets and customization settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "colors": { "type": "object" },
+        "fonts": { "type": "object" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "name", "colors", "isActive"]
+    }
+  },
+  "firestore": {
+    "/artists/{artistId}": {
+      "schema": "artist",
+      "description": "Artist biography, media and stats storage"
+    },
+    "/releases/{releaseId}": {
+      "schema": "release",
+      "description": "LP, EP, Single tracks metadata storage"
+    },
+    "/mythologies/{chapterId}": {
+      "schema": "mythology",
+      "description": "Scrolling audio/video narrative chapters"
+    },
+    "/comments/{commentId}": {
+      "schema": "comment",
+      "description": "Public comments and reviews"
+    },
+    "/members/{memberId}": {
+      "schema": "member",
+      "description": "User profile with achievements, badges and subscription tier"
+    },
+    "/vault/{assetId}": {
+      "schema": "vaultAsset",
+      "description": "Exclusive downloadable masters, stems, and collateral"
+    },
+    "/broadcasts/{broadcastId}": {
+      "schema": "broadcast",
+      "description": "Outbound communication campaign list"
+    },
+    "/analytics/{analyticsId}": {
+      "schema": "analyticEvent",
+      "description": "Listener telemetry, clicks and engagement metrics"
+    },
+    "/themes/{themeId}": {
+      "schema": "themePreset",
+      "description": "Themes for visual look-and-feel of the media OS"
+    }
+  }
+}

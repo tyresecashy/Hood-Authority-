@@ -1,0 +1,6 @@
+{
+  "name": "Hood Authority Co.",
+  "description": "High-fidelity Media Operating System featuring cinematic East African hip-hop mythology, interactive audio player, artist hubs, community workspace, and an extensive admin suite with real-time analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
